@@ -4,9 +4,10 @@
     <title>Café Fausse - Fine Italian Dining in Washington, DC</title>
     <meta charset="utf-8">
     <script type="text/javascript">
-        // Redirect all 404s to index.html (for SPA routing)
-        const redirectTo = window.location.protocol + '//' + window.location.host + '/cafefausse/';
-        window.location.replace(redirectTo + '#!' + window.location.pathname);
+        // Get the current path
+        const path = window.location.pathname;
+        // Replace 404 page with index.html to let React Router handle it
+        window.location.replace(path + '/index.html');
     </script>
 </head>
 <body></body>
