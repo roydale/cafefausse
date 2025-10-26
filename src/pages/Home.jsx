@@ -29,23 +29,21 @@ const Home = () => {
             Where Traditional Italian Flavors Meet Modern Culinary Innovation
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/reservations">
-              <Button
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg shadow-elegant"
-              >
-                Reserve a Table
-              </Button>
-            </Link>
-            <Link to="/menu">
-              <Button
-                size="lg"
-                variant="outline"
-                className="bg-white/10 border-white text-white hover:bg-white hover:text-foreground px-8 py-6 text-lg backdrop-blur-sm"
-              >
-                View Menu
-              </Button>
-            </Link>
+            <Button
+              asChild
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg shadow-elegant"
+            >
+              <Link to="/reservations">Reserve a Table</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="bg-white/10 border-white text-white hover:bg-white hover:text-foreground px-8 py-6 text-lg backdrop-blur-sm"
+            >
+              <Link to="/menu">View Menu</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -121,3 +119,4 @@ const Home = () => {
 };
 
 export default Home;
+

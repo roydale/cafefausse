@@ -42,6 +42,40 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## 🚀 Deploying to GitHub Pages
+
+### 1. Create Repository
+```sh
+git init
+git remote add origin https://github.com/<username>/<repo>.git
+git add .
+git commit -m "Initial commit"
+git push -u origin main
+```
+### 2. Build Project
+```sh
+npm run build
+```
+### 3. Install gh-pages
+```sh
+npm install --save-dev gh-pages
+```
+#### Add to package.json:
+```js
+"homepage": "https://<username>.github.io/<repo>",
+"scripts": {
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build"
+}
+```
+#### For Vite
+```js
+"deploy": "gh-pages -d dist"
+```
+#### Deploy:
+```sh
+npm run deploy
+```
 ## What technologies are used for this project?
 
 This project is built with:

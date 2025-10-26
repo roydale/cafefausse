@@ -55,6 +55,16 @@ const menuItems = {
       description: "Crisp and refreshing",
       price: "$9.00",
     },
+    {
+       name: "Craft Beer",
+       description: "Local artisan brews",
+       price: "$6.00",
+    },
+    {
+       name: "Espresso",
+       description: "Strong and aromatic",
+       price: "$3.00",
+    },
   ],
 };
 
