@@ -3,11 +3,11 @@
 <head>
     <title>Café Fausse - Fine Italian Dining in Washington, DC</title>
     <meta charset="utf-8">
-    <script type="text/javascript">
-        // Get the current path
-        const path = window.location.pathname;
-        // Replace 404 page with index.html to let React Router handle it
-        window.location.replace(path + '/index.html');
+    <script>
+        // Only redirect to index.html if not already there
+        if (!window.location.pathname.endsWith('/index.html')) {
+            window.location.replace('/cafefausse/index.html');
+        }
     </script>
 </head>
 <body></body>
