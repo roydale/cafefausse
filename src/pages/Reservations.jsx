@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Calendar, Clock, Users } from "lucide-react";
+import { createReservation } from "@/services/reservation.service";
 
 const Reservations = () => {
   const [formData, setFormData] = useState({
@@ -18,25 +19,47 @@ const Reservations = () => {
     guests: "2",
   });
 
-  const handleSubmit = (e) => {
+  const [response, setResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // React to reservation result
+  useEffect(() => {
+    if (!response) return;
+
+    if (response.success) {
+      toast.success(response.message || "Reservation successful!");
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        date: "",
+        time: "",
+        guests: "2",
+      });
+    } else {
+      toast.error(response.message || "Reservation failed.");
+    }
+  }, [response]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate form
     if (!formData.name || !formData.email || !formData.date || !formData.time) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    // Simulate reservation
-    toast.success("Reservation request submitted! We'll contact you shortly to confirm.");
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      date: "",
-      time: "",
-      guests: "2",
-    });
+    setLoading(true);
+
+    try {
+      const result = await createReservation(formData);
+      setResponse(result);
+    } catch (error) {
+      // Preserve the message coming from api-client.js
+      setResponse({ success: false, message: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -165,13 +188,16 @@ const Reservations = () => {
                   </select>
                 </div>
 
-                <Button type="submit" size="lg" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
-                  Submit Reservation Request
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full bg-primary hover:bg-primary/90 text-lg py-6"
+                  disabled={loading}
+                >
+                  {loading ? "Submitting..." : "Submit Reservation Request"}
                 </Button>
 
-                <p className="text-sm text-muted-foreground text-center">
-                  * Required fields. We'll confirm your reservation within 24 hours.
-                </p>
+                <p className="text-sm text-muted-foreground text-center">* Required fields.</p>
               </form>
             </Card>
 
