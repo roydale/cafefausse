@@ -18,13 +18,20 @@ const Reservations = () => {
     time: "",
     guests: "2",
   });
-
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [errors, setErrors] = useState({});
+  const [timeOptions, setTimeOptions] = useState([]);
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[0-9()+\s-]{7,20}$/;
 
   // React to reservation result
   useEffect(() => {
-    if (!response) return;
+    if (!response) {
+      return;
+    }
 
     if (response.success) {
       toast.success(response.message || "Reservation successful!");
@@ -41,11 +48,93 @@ const Reservations = () => {
     }
   }, [response]);
 
+  // Update time options dynamically when date changes
+  useEffect(() => {
+    if (!formData.date) {
+      setTimeOptions([]);
+      return;
+    }
+
+    const selectedDate = new Date(formData.date);
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+    const now = new Date();
+
+    // Operating hours: Sunday 5PM–9PM, otherwise (Monday–Saturday) 5PM–11PM
+    // But we're not offering reservations at the closing times
+    // Instead, we're setting the last reservation time option to
+    // Sunday 8PM, otherwise (Monday–Saturday) 10PM
+    const times = dayOfWeek === 0 ? generateTimes(17, 20) : generateTimes(17, 22);
+
+    let filteredTimes = times;
+    const isToday = selectedDate.toDateString() === now.toDateString();
+
+    setTimeOptions(times);
+    setFormData((prev) => ({ ...prev, time: "" })); // reset selected time
+  }, [formData.date]);
+
+  const generateTimes = (startHour, endHour) => {
+    const result = [];
+    for (let hour = startHour; hour <= endHour; hour++) {
+      result.push(`${hour}:00`);
+      /*
+      if (hour !== endHour) {
+        result.push(`${hour}:30`);
+      }
+      */
+    }
+    return result;
+  };
+
+  const validateField = (name, value) => {
+    let message = "";
+
+    switch (name) {
+      case "name":
+        if (!value.trim()) {
+          message = "Full name is required.";
+        }
+        break;
+
+      case "email":
+        if (!value.trim()) {
+          message = "Email address is required.";
+        } else if (!emailRegex.test(value)) {
+          message = "Enter a valid email address.";
+        }
+        break;
+
+      case "phone":
+        // Optional — only validate if not empty
+        if (value.trim() && !phoneRegex.test(value)) {
+          message = "Enter a valid phone number.";
+        }
+        break;
+
+      case "date":
+        if (!value) {
+          message = "Please select a date.";
+        }
+        break;
+
+      case "time":
+        if (!value) {
+          message = "Please select a time.";
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: message }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.date || !formData.time) {
-      toast.error("Please fill in all required fields");
+    const hasValidPhoneNumber = !formData.phone || phoneRegex.test(formData.phone);
+    if (!formData.name || !formData.email || !formData.date || !formData.time || !hasValidPhoneNumber) {
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -63,10 +152,18 @@ const Reservations = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (touched[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    validateField(name, value);
   };
 
   return (
@@ -84,86 +181,128 @@ const Reservations = () => {
 
           <div className="max-w-2xl mx-auto">
             <Card className="p-8 shadow-elegant">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div>
-                  <Label htmlFor="name" className="text-base">
-                    Full Name *
-                  </Label>
+                  <div className="flex flex-row justify-between items-center gap-3">
+                    <Label htmlFor="name" className="text-base">
+                      Full Name *
+                    </Label>
+                    {touched.name && errors.name && (
+                      <p className="text-red-500 text-sm mt-1 text-right">{errors.name}</p>
+                    )}
+                  </div>
                   <Input
                     id="name"
                     name="name"
                     type="text"
                     value={formData.name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="John Doe"
                     required
-                    className="mt-2"
+                    className={`mt-2 ${touched.name && errors.name ? "border-red-500" : ""}`}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="text-base">
-                    Email Address *
-                  </Label>
+                  <div className="flex flex-row justify-between items-center gap-3">
+                    <Label htmlFor="email" className="text-base">
+                      Email Address *
+                    </Label>
+                    {touched.email && errors.email && (
+                      <p className="text-red-500 text-sm mt-1 text-right">{errors.email}</p>
+                    )}
+                  </div>
                   <Input
                     id="email"
                     name="email"
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="john@example.com"
                     required
-                    className="mt-2"
+                    className={`mt-2 ${touched.email && errors.email ? "border-red-500" : ""}`}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="text-base">
-                    Phone Number (Optional)
-                  </Label>
+                  <div className="flex flex-row justify-between items-center">
+                    <Label htmlFor="phone" className="text-base">
+                      Phone Number (Optional)
+                    </Label>
+                    {touched.phone && errors.phone && (
+                      <p className="text-red-500 text-sm mt-1 text-right">{errors.phone}</p>
+                    )}
+                  </div>
                   <Input
                     id="phone"
                     name="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     placeholder="(202) 555-0123"
-                    className="mt-2"
+                    className={`mt-2 ${touched.phone && errors.phone ? "border-red-500" : ""}`}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="date" className="text-base flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      Date *
-                    </Label>
+                    <div className="flex flex-row justify-between items-center gap-3">
+                      <Label htmlFor="date" className="text-base flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Date *
+                      </Label>
+                      {touched.date && errors.date && (
+                        <p className="text-red-500 text-sm mt-1 text-right">{errors.date}</p>
+                      )}
+                    </div>
                     <Input
                       id="date"
                       name="date"
                       type="date"
                       value={formData.date}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       required
-                      className="mt-2"
+                      className={`mt-2 ${touched.date && errors.date ? "border-red-500" : ""}`}
                       min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="time" className="text-base flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Time *
-                    </Label>
-                    <Input
+                    <div className="flex flex-row justify-between items-center gap-3">
+                      <Label htmlFor="time" className="text-base flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Time *
+                      </Label>
+                      {touched.time && errors.time && (
+                        <p className="text-red-500 text-sm mt-1 text-right">{errors.time}</p>
+                      )}
+                    </div>
+                    <select
                       id="time"
                       name="time"
-                      type="time"
                       value={formData.time}
                       onChange={handleChange}
+                      onBlur={handleBlur}
+                      disabled={!formData.date}
                       required
-                      className="mt-2"
-                    />
+                      className={`mt-2 w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ${
+                        touched.time && errors.time ? "border-red-500" : ""
+                      } ${!formData.date ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <option value="">Select time</option>
+                      {timeOptions.map((t) => (
+                        <option key={t} value={t}>
+                          {new Date(`1970-01-01T${t}`).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -197,7 +336,9 @@ const Reservations = () => {
                   {loading ? "Submitting..." : "Submit Reservation Request"}
                 </Button>
 
-                <p className="text-sm text-muted-foreground text-center">* Required fields.</p>
+                <p className="text-sm text-muted-foreground text-center">
+                  * Required fields. Phone numbers may include 0–9, +, –, and parentheses ( ).
+                </p>
               </form>
             </Card>
 
