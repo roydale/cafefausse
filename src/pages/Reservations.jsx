@@ -48,35 +48,104 @@ const Reservations = () => {
     }
   }, [response]);
 
-  // Update time options dynamically when date changes
+  // Clear time options when date changes
   useEffect(() => {
+    setTimeOptions([]);
+    setFormData((prev) => ({ ...prev, time: "" })); // Resets form time selection
+  }, [formData.date]);
+
+  // Update time options dynamically
+  const handleTimeDropdownClick = () => {
     if (!formData.date) {
-      setTimeOptions([]);
       return;
     }
 
     const selectedDate = new Date(formData.date);
+    //const now = new Date();
+    const now = new Date("2025-10-30T22:59:00");
+
+    const isToday =
+      selectedDate.getDate() === now.getDate() &&
+      selectedDate.getMonth() === now.getMonth() &&
+      selectedDate.getFullYear() === now.getFullYear();
+
     const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
-    const now = new Date();
+    const isSunday = dayOfWeek === 0;
 
     // Operating hours: Sunday 5PM–9PM, otherwise (Monday–Saturday) 5PM–11PM
     // But we're not offering reservations at the closing times
     // Instead, we're setting the last reservation time option to
     // Sunday 8PM, otherwise (Monday–Saturday) 10PM
-    const times = dayOfWeek === 0 ? generateTimes(17, 20) : generateTimes(17, 22);
+    const baseHours = isSunday ? generateTimes(17, 20) : generateTimes(17, 22);
 
-    let filteredTimes = times;
-    const isToday = selectedDate.toDateString() === now.toDateString();
+    let filteredHours = baseHours;
+    if (isToday) {
+      // Filter out any hour < current hour + 1 hour allowance
+      const currentHour = now.getHours() + 1;
+      filteredHours = baseHours.filter((h) => h > currentHour);
+    }
 
-    setTimeOptions(times);
-    setFormData((prev) => ({ ...prev, time: "" })); // reset selected time
-  }, [formData.date]);
+    const formattedTimes = filteredHours.map((h) => formatTime(h));
+
+    // If no times available, mark touched immediately so the message shows on first click
+    if (isToday && formattedTimes.length === 0) {
+      setTouched((prev) => ({ ...prev, time: true }));
+      setErrors((prev) => ({ ...prev, time: "No available times today." }));
+    } else {
+      setErrors((prev) => ({ ...prev, time: "" }));
+    }
+    setTimeOptions(formattedTimes);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const hasValidPhoneNumber = !formData.phone || phoneRegex.test(formData.phone);
+    if (!formData.name || !formData.email || !formData.date || !formData.time || !hasValidPhoneNumber) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await createReservation(formData);
+      setResponse(result);
+    } catch (error) {
+      // Preserve the message coming from the api client
+      setResponse({ success: false, message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (touched[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    validateField(name, value);
+  };
+
+  // Helper to format 24-hour time into "5:00 PM" etc.
+  const formatTime = (hour) => {
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:00 ${ampm}`;
+  };
 
   const generateTimes = (startHour, endHour) => {
     const result = [];
     for (let hour = startHour; hour <= endHour; hour++) {
-      result.push(`${hour}:00`);
-      /*
+      result.push(hour);
+      /*result.push(`${hour}:00`);      
       if (hour !== endHour) {
         result.push(`${hour}:30`);
       }
@@ -125,45 +194,7 @@ const Reservations = () => {
       default:
         break;
     }
-
     setErrors((prev) => ({ ...prev, [name]: message }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const hasValidPhoneNumber = !formData.phone || phoneRegex.test(formData.phone);
-    if (!formData.name || !formData.email || !formData.date || !formData.time || !hasValidPhoneNumber) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const result = await createReservation(formData);
-      setResponse(result);
-    } catch (error) {
-      // Preserve the message coming from api-client.js
-      setResponse({ success: false, message: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (touched[name]) {
-      validateField(name, value);
-    }
-  };
-
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
-    validateField(name, value);
   };
 
   return (
@@ -183,7 +214,7 @@ const Reservations = () => {
             <Card className="p-8 shadow-elegant">
               <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div>
-                  <div className="flex flex-row justify-between items-center gap-3">
+                  <div className="flex flex-row justify-between items-center">
                     <Label htmlFor="name" className="text-base">
                       Full Name *
                     </Label>
@@ -205,7 +236,7 @@ const Reservations = () => {
                 </div>
 
                 <div>
-                  <div className="flex flex-row justify-between items-center gap-3">
+                  <div className="flex flex-row justify-between items-center">
                     <Label htmlFor="email" className="text-base">
                       Email Address *
                     </Label>
@@ -249,8 +280,8 @@ const Reservations = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <div className="flex flex-row justify-between items-center gap-3">
-                      <Label htmlFor="date" className="text-base flex items-center gap-2">
+                    <div className="flex flex-row justify-between items-center">
+                      <Label htmlFor="date" className="text-base flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         Date *
                       </Label>
@@ -267,13 +298,14 @@ const Reservations = () => {
                       onBlur={handleBlur}
                       required
                       className={`mt-2 ${touched.date && errors.date ? "border-red-500" : ""}`}
+                      style={{ display: "block" }}
                       min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
 
                   <div>
-                    <div className="flex flex-row justify-between items-center gap-3">
-                      <Label htmlFor="time" className="text-base flex items-center gap-2">
+                    <div className="flex flex-row justify-between items-center">
+                      <Label htmlFor="time" className="text-base flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         Time *
                       </Label>
@@ -287,6 +319,7 @@ const Reservations = () => {
                       value={formData.time}
                       onChange={handleChange}
                       onBlur={handleBlur}
+                      onClick={handleTimeDropdownClick}
                       disabled={!formData.date}
                       required
                       className={`mt-2 w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ${
@@ -296,7 +329,7 @@ const Reservations = () => {
                       <option value="">Select time</option>
                       {timeOptions.map((t) => (
                         <option key={t} value={t}>
-                          {new Date(`1970-01-01T${t}`).toLocaleTimeString([], {
+                          {new Date(`${formData.date} ${t}`).toLocaleTimeString([], {
                             hour: "numeric",
                             minute: "2-digit",
                           })}
@@ -307,7 +340,7 @@ const Reservations = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="guests" className="text-base flex items-center gap-2">
+                  <Label htmlFor="guests" className="text-base flex items-center gap-1">
                     <Users className="w-4 h-4" />
                     Number of Guests *
                   </Label>
