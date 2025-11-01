@@ -16,7 +16,7 @@ const Reservations = () => {
     phone: "",
     date: "",
     time: "",
-    guests: "2",
+    guests: 2,
   });
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ const Reservations = () => {
         phone: "",
         date: "",
         time: "",
-        guests: "2",
+        guests: 2,
       });
     } else {
       toast.error(response.message || "Reservation failed.");
@@ -61,8 +61,7 @@ const Reservations = () => {
     }
 
     const selectedDate = new Date(formData.date);
-    //const now = new Date();
-    const now = new Date("2025-10-30T22:59:00");
+    const now = new Date();
 
     const isToday =
       selectedDate.getDate() === now.getDate() &&
@@ -76,16 +75,15 @@ const Reservations = () => {
     // But we're not offering reservations at the closing times
     // Instead, we're setting the last reservation time option to
     // Sunday 8PM, otherwise (Monday–Saturday) 10PM
-    const baseHours = isSunday ? generateTimes(17, 20) : generateTimes(17, 22);
+    const reservationHours = isSunday ? generateTimes(17, 20) : generateTimes(17, 22);
 
-    let filteredHours = baseHours;
+    let filteredReservationHours = reservationHours;
     if (isToday) {
       // Filter out any hour < current hour + 1 hour allowance
       const currentHour = now.getHours() + 1;
-      filteredHours = baseHours.filter((h) => h > currentHour);
+      filteredReservationHours = reservationHours.filter((reservationHour) => reservationHour > currentHour);
     }
-
-    const formattedTimes = filteredHours.map((h) => formatTime(h));
+    const formattedTimes = filteredReservationHours.map((hour) => `${hour}:00`);
 
     // If no times available, mark touched immediately so the message shows on first click
     if (isToday && formattedTimes.length === 0) {
@@ -121,7 +119,10 @@ const Reservations = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "guests" ? Number(value) : value,
+    }));
 
     if (touched[name]) {
       validateField(name, value);
@@ -134,22 +135,10 @@ const Reservations = () => {
     validateField(name, value);
   };
 
-  // Helper to format 24-hour time into "5:00 PM" etc.
-  const formatTime = (hour) => {
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:00 ${ampm}`;
-  };
-
   const generateTimes = (startHour, endHour) => {
     const result = [];
     for (let hour = startHour; hour <= endHour; hour++) {
       result.push(hour);
-      /*result.push(`${hour}:00`);      
-      if (hour !== endHour) {
-        result.push(`${hour}:30`);
-      }
-      */
     }
     return result;
   };
@@ -230,6 +219,7 @@ const Reservations = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder="John Doe"
+                    maxlength="255"
                     required
                     className={`mt-2 ${touched.name && errors.name ? "border-red-500" : ""}`}
                   />
@@ -252,6 +242,7 @@ const Reservations = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder="john@example.com"
+                    maxlength="255"
                     required
                     className={`mt-2 ${touched.email && errors.email ? "border-red-500" : ""}`}
                   />
@@ -274,6 +265,7 @@ const Reservations = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder="(202) 555-0123"
+                    maxlength="20"
                     className={`mt-2 ${touched.phone && errors.phone ? "border-red-500" : ""}`}
                   />
                 </div>
@@ -329,7 +321,7 @@ const Reservations = () => {
                       <option value="">Select time</option>
                       {timeOptions.map((t) => (
                         <option key={t} value={t}>
-                          {new Date(`${formData.date} ${t}`).toLocaleTimeString([], {
+                          {new Date(`${formData.date}T${t}`).toLocaleTimeString([], {
                             hour: "numeric",
                             minute: "2-digit",
                           })}
